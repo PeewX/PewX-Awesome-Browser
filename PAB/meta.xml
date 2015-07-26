@@ -1,0 +1,20 @@
+<meta>
+    <info name="PewX Awesome Browser" author="PewX" />
+    <oop>true</oop>
+
+    <!--Shared-->
+        <script src = "shared/classlib.lua" type = "shared" />
+        <script src = "shared/utils.lua" type = "shared" />
+
+    <!--Server-->
+        <script src = "server/CBrowser.lua" type = "server" />
+
+    <!--Client-->
+        <script src = "client/CBrowser.lua" type = "client" />
+
+    <!--Files-->
+        <file src = "res/img/back.png" />
+        <file src = "res/img/forward.png" />
+        <file src = "res/img/home.png" />
+        <file src = "res/img/refresh.png" />
+</meta>
