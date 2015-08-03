@@ -10,7 +10,7 @@
         <script src = "server/CBrowser.lua" type = "server" />
 
     <!--Client-->
-        <script src = "client/CBrowser.lua" type = "client" />
+        <script src = "client/CBrowser.lua" type = "client" cache = "false"/>
 
     <!--Files-->
         <file src = "res/img/back.png" />
@@ -18,4 +18,6 @@
         <file src = "res/img/home.png" />
         <file src = "res/img/refresh.png" />
         <file src = "res/img/favo.png" />
+        <file src = "res/img/create_tab.png" />
+        <file src = "res/img/close.png" />
 </meta>

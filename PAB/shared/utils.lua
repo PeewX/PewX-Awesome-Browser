@@ -7,9 +7,6 @@
 if CLIENT then
     x, y = guiGetScreenSize()
 
-
-
-
     function isHover(startX, startY, width, height)
         if isCursorShowing() then
             local pos = {getCursorPosition()}

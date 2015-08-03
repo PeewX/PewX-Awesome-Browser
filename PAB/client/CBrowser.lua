@@ -4,7 +4,7 @@
 -- Date: 26.07.2015 - Time: 04:18
 -- pewx.de // iGaming-mta.de // iRace-mta.de // iSurvival.de // mtasa.de
 --
---requestBrowserDomains({"http://google.com", "http://facebook.com", "http://teamspeak.com", "http://chip.com", "http://chip.de", "http://mtasa.de"})
+requestBrowserDomains({"youtube.de", "lh5.googleusercontent.com", "mta-sa.org", "google.com", "www.google.com", "google.de", "www.google.de", "accounts.google.com", "yt3.ggpht.com",  "www.mta-sa.org", "www.pewx.de", "pewx.de", "mtasa.de", "irace-mta.de", "www.irace-mta.de", })
 CBrowser = {}
 
 function CBrowser:constructor(startX, startY)
@@ -16,6 +16,7 @@ function CBrowser:constructor(startX, startY)
     self.tabs = {}
     self.mainColor = tocolor(70, 120, 180)
     self.lineColor = tocolor(80, 80 ,80)
+    self.urlColor = tocolor(240, 240, 240)
 
     --Browser size configuration
     self.isMaximized = false
@@ -35,22 +36,25 @@ function CBrowser:constructor(startX, startY)
     self.menuOffset = self.defaultMenuOffset
 
     self.defaultTabSize = 180
+    self.defaultTabHeight = self.menuIconSizeY + 5
     self.tabSize = self.defaultTabSize
+    self.tabHeight = self.defaultTabHeight
 
-    --Function handlers
+    --Function handles
     self.renderFunc = bind(CBrowser.renderBrowser, self)
-    self.bindKeyFunc = bind(CBrowser.toggleBrowser, self)
-    self.bindKeyFunc2 = bind(CBrowser.createTab, self)
-    self.onClickFunc = bind(CBrowser.onClick, self)
-    self.commandFunc = bind(CBrowser.navigateTo, self)
+    self.preRenderFunc = bind(CBrowser.preRenderBrowser, self)
 
-    --bindKey("F1", "down", self.bindKeyFunc)
-    bindKey("F2", "down", self.bindKeyFunc2)
-    addCommandHandler("navigate", self.commandFunc)
+    self.onClickFunc = bind(CBrowser.onClick, self)
+    self.cursorMoveFunc = bind(CBrowser.onCursorMove, self)
+    self.clientKeyFunc = bind(CBrowser.onClientKey, self)
+    self.navigateFunc = bind(CBrowser.onBrowserNavigate, self)
+    self.documentReadyFunc = bind(CBrowser.onDocumentReady, self)
 
     ------------------------------------
     --Development
     -----------------------------------
+    self.commandFunc = bind(CBrowser.navigateTo, self)
+    addCommandHandler("navigate", self.commandFunc)
 
     --self:toggleBrowserSize()
     self:toggleBrowser()
@@ -58,6 +62,66 @@ function CBrowser:constructor(startX, startY)
     self.currentTab = 1
 end
 
+function CBrowser:destructor()
+    removeCommandHandler("navigate", self.commandFunc)
+    removeEventHandler("onClientRender", root, self.renderFunc)
+    removeEventHandler("onClientClick", root, self.onClickFunc)
+    unbindKey("F1", "down", self.bindKeyFunc)
+    unbindKey("F2", "down", self.bindKeyFunc2)
+
+    for i, v in pairs(self) do
+        v = nil
+    end
+end
+
+--//
+--|| Event: onClientCursorMove | Calculate and inject cursor position | Hover effects
+--\\
+function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
+    if not isCursorShowing() then return end
+    if not self.isActive then return end
+
+    local browser = self.tabs[self.currentTab].browser
+    if browser then
+        browser:injectMouseMove(nCursorPosX - self.browserElementStartX, nCursorPosY - self.browserElementStartY)
+    end
+end
+
+--//
+--|| Event: onClientKey | Vertical scrolling
+--\\
+function CBrowser:onClientKey(sButton, sState)
+    if sButton == "mouse_wheel_down" or sButton == "mouse_wheel_up" then
+        --Todo: Interpolation
+        local browser = self.tabs[self.currentTab].browser
+        if browser then
+            local scrollDirection = sButton == "mouse_wheel_up" and 1 or -1
+            browser:injectMouseWheel(scrollDirection*80, 0)
+        end
+    end
+end
+
+--//
+--|| Event: onClientBrowserNavigate | If the navigated url is blocked (not in whitelist), request the domain
+--\\
+function CBrowser:onBrowserNavigate(sURL, bBlocked)
+    if bBlocked then
+        --Todo: Color the URL bar red for some seconds
+        Browser.requestDomains({sURL}, true)
+    end
+end
+
+--//
+--|| Event: onClientBrowserDocumentReady | Save the navigated urls for history
+--\\
+function CBrowser:onDocumentReady(sURL)
+    self.tabs[self.currentTab].URL = sURL
+    table.insert(self.tabs[self.currentTab].history, sURL)
+end
+
+--//
+--|| Todo: navigateTO
+--\\
 function CBrowser:navigateTo(_, sNavigateTo)
     if not self.isActive then return end
     if Browser.isDomainBlocked(sNavigateTo, true) then
@@ -68,34 +132,40 @@ function CBrowser:navigateTo(_, sNavigateTo)
     self:loadURL(sNavigateTo)
 end
 
-function CBrowser:destructor()
-    removeCommandHandler("navigate", self.commandFunc)
-    removeEventHandler("onClientRender", root, self.renderFunc)
-    removeEventHandler("onClientClick", root, self.onClickFunc)
-    unbindKey("F1", "down", self.bindKeyFunc)
-    unbindKey("F2", "down", self.bindKeyFunc2)
-
-    self = nil
-end
-
+--//
+--|| Todo: toggleBrowser
+--\\
 function CBrowser:toggleBrowser()
     if self.isVisible then
         self.isVisible = false
+        removeEventHandler("onClientPreRender", root, self.preRenderFunc)
         removeEventHandler("onClientRender", root, self.renderFunc)
         removeEventHandler("onClientClick", root, self.onClickFunc)
+        removeEventHandler("onClientCursorMove", root, self.cursorMoveFunc)
+        removeEventHandler("onClientKey", root, self.clientKeyFunc)
+        removeEventHandler("onClientBrowserNavigate", root, self.navigateFunc)
+        removeEventHandler("onClientBrowserDocumentReady", root, self.documentReadyFunc)
         showCursor(false)
         return
     end
 
     if not self.isVisible then
         self.isVisible = true
+        addEventHandler("onClientPreRender", root, self.preRenderFunc)
         addEventHandler("onClientRender", root, self.renderFunc)
         addEventHandler("onClientClick", root, self.onClickFunc)
+        addEventHandler("onClientCursorMove", root, self.cursorMoveFunc)
+        addEventHandler("onClientKey", root, self.clientKeyFunc)
+        addEventHandler("onClientBrowserNavigate", root, self.navigateFunc)
+        addEventHandler("onClientBrowserDocumentReady", root, self.documentReadyFunc)
         showCursor(true)
         return
     end
 end
 
+--//
+--|| Todo: toggleBrowserSize
+--\\
 function CBrowser:toggleBrowserSize()
     if self.isMaximized then
         if self.lastMinimizedPosition then
@@ -126,29 +196,53 @@ function CBrowser:toggleBrowserSize()
     end
 end
 
+--//
+--|| Todo: close
+--\\
 function CBrowser:close()
+    for _, tab in ipairs(self.tabs) do
+        if isElement(tab.browser) then
+            tab.browser:destroy()
+        end
+    end
+
     self:destructor()
 end
 
-function CBrowser:onClick(sBTN, sState)
-    if sBTN == "left" and sState == "down" then
+--//
+--|| Handle all browser Clicks.. not rly nice.. but.. it owrks :X
+--\\
+function CBrowser:onClick(sButton, sState)
+    if sState == "down" then
         --Check, if the browser was clicked, if not, return all inputs
-        if isHover(self.browserStartX, self.browserStartY, self.browserSizeX, self.browserSizeY) then
+        if sButton == "left" and isHover(self.browserStartX, self.browserStartY, self.browserSizeX, self.browserSizeY) then
             self.mainColor = tocolor(70, 120, 180)
             self.isActive = true
+            guiSetInputEnabled(false)
         else
+            guiSetInputEnabled(true)
             self.mainColor = tocolor(190, 190, 190)
             self.isActive = false
             self.mouseClickActive = false
             return
         end
 
+        --If click was in browser, inject click to CEF
+        if isHover(self.browserElementStartX, self.browserElementStartY, self.browserSizeX, self.browserSizeY) then
+            guiSetInputEnabled(false)
+            self.tabs[self.currentTab].browser:injectMouseDown(sButton)
+            self.tabs[self.currentTab].browser:focus()
+        end
+
+        if sButton ~= "left" then return end
+        if not self.isActive then return end
+
         --Get current browser size
         self.currentBrowserSize = {self.browserSizeX, self.browserSizeY}
         self.mouseClickActive = true
 
         --If close button was clicked... R.I.P. Browser
-        if isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40, self.browserStartY, 40, self.menuIconSizeY) then
+        if sButton == "left" and isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40, self.browserStartY, 40, self.menuIconSizeY) then
             self:close()
             return
         end
@@ -156,27 +250,37 @@ function CBrowser:onClick(sBTN, sState)
         --Check if a tab was clicked
         for i, tab in ipairs(self.tabs) do
             local tabStartX =  self.browserStartX + self.menuOffset + self.menuIconSizeX + 5 + (self.tabSize*(i-1))
-            if isHover(tabStartX, self.browserStartY, self.tabSize, self.browserStartY + self.menuIconSizeY + 5) then
+
+            if isHover(tabStartX + self.tabSize - 14 - 5, self.browserStartY + self.tabHeight/2-14/2, 14, 14) then
+                self.mouseClickActive = false
+                self:closeTab(i)
+                return
+            end
+
+            if isHover(tabStartX, self.browserStartY, self.tabSize, self.menuIconSizeY + 5) then
                 self.currentTab = i
                 self.tabChanged = true
                 self.mouseClickActive = false
                 if tab.resize then
                     tab.resize = false
-
-                    outputChatBox("Browser size changed, recreate browser in current tab")
                     if isElement(self.tabs[self.currentTab].browser) then
                         destroyElement(self.tabs[self.currentTab].browser)
                     end
                     self.tabs[self.currentTab].browser = Browser(self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, false, false)
                     addEventHandler("onClientBrowserCreated", self.tabs[self.currentTab].browser,
                         function()
-                            --self.tabs[self.currentTab].browser:loadURL(self.tabs[self.currentTab].URL)
                             source:loadURL(self.tabs[self.currentTab].URL)
                         end
                     )
 
                 end
                 return
+            end
+
+            if i == #self.tabs then
+                if isHover(tabStartX + self.tabSize + 5, self.browserStartY + 18/2, 18, 18) then
+                    self:createTab()
+                end
             end
         end
 
@@ -196,51 +300,114 @@ function CBrowser:onClick(sBTN, sState)
             self.browserChangingSize = false
         end
     else
+        self.tabs[self.currentTab].browser:injectMouseUp(sButton)
+        guiSetInputEnabled(true)
         self.mouseClickActive = false
         if self.currentBrowserSize[1] ~= self.browserSizeX or self.currentBrowserSize[2] ~= self.browserSizeY then
-            outputChatBox("Browser size changed, recreate browser in current tab")
             if isElement(self.tabs[self.currentTab].browser) then
+                self.tabs[self.currentTab].URL = self.tabs[self.currentTab].browser:getURL()
                 destroyElement(self.tabs[self.currentTab].browser)
             end
+
             self.tabs[self.currentTab].browser = Browser(self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, false, false)
             addEventHandler("onClientBrowserCreated", self.tabs[self.currentTab].browser,
                 function()
-                    self.tabs[self.currentTab].browser:loadURL(self.tabs[self.currentTab].URL)
+                    --self.tabs[self.currentTab].browser:loadURL(self.tabs[self.currentTab].URL)
                     source:loadURL(self.tabs[self.currentTab].URL)
                 end
             )
 
             for i, tab in ipairs(self.tabs) do
-               if i ~= self.currentTab then
-                  tab.resize = true
-               end
+                if i ~= self.currentTab then
+                    tab.resize = true
+                end
             end
         end
     end
 end
 
+--//
+--|| LoadURL
+--\\
 function CBrowser:loadURL(sURL)
     self.tabs[self.currentTab].URL = sURL
     self.tabs[self.currentTab].browser:loadURL(sURL)
     outputChatBox("loadURL: " .. sURL)
 end
 
+--//
+--|| Create a tab; create browser element and navigate to default website
+--\\
 function CBrowser:createTab()
     local tab = {}
-    tab.title = "Speed dial"
+
+    tab.history = {}
     tab.browser = Browser(self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, false, false)
+    if not tab.browser then outputChatBox("Anything is going wrong!") return end
     addEventHandler("onClientBrowserCreated", tab.browser,
         function()
             --ToDo: Set default/home page local
             tab.URL = "http://pewx.de/res/pab/index.htm"
             tab.browser:loadURL(tab.URL)
+            self:calculateTabSize()
         end
     )
+
     table.insert(self.tabs, tab)
-
-
+    self.currentTab = #self.tabs
 end
 
+--//
+--|| Close tab; if only one tab open, load default page | If necessary, select a new valid tab, and close the "old" one | Let resize tabs
+--\\
+function CBrowser:closeTab(nTabIndex)
+    if #self.tabs <= 1 then self.tabs[1].browser:loadURL("http://pewx.de/res/pab/index.htm") return end
+
+    local browser = self.tabs[nTabIndex].browser
+    if browser then browser:destroy() end
+
+    if self.currentTab == nTabIndex then
+        if #self.tabs == nTabIndex then
+            self.currentTab = self.currentTab - 1
+        end
+    else
+        if self.currentTab > #self.tabs - 1 then
+            self.currentTab = #self.tabs - 1
+        end
+    end
+
+    table.remove(self.tabs, nTabIndex)
+    self:calculateTabSize()
+end
+
+--//
+--|| Calculate tab size, to fit all tabs in browser window
+--\\
+function CBrowser:calculateTabSize()
+    --The first tab start at this point:
+    local tabStartX = self.browserStartX + self.menuOffset + self.menuIconSizeX + 5
+    --A tab has to stop at this point:
+    local tabStopX = self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 150
+    --Substract startX from stopX to get the max tab range
+    local maxTabRange = tabStopX - tabStartX
+
+    if #self.tabs*self.tabSize > maxTabRange then
+        outputChatBox("resize", 255, 0, 0)
+        self.tabSize = maxTabRange/#self.tabs
+    else
+        if #self.tabs*self.defaultTabSize > maxTabRange then
+            outputChatBox("resize", 255, 0, 0)
+            self.tabSize = maxTabRange/#self.tabs
+        else
+            outputChatBox("set to default", 0, 255, 0)
+            self.tabSize = self.defaultTabSize
+        end
+    end
+end
+
+--//
+--|| Let us render the browser
+--\\
 function CBrowser:renderBrowser()
     local bx, by = self.browserStartX, self.browserStartY   --Shortcut for browser start position
 
@@ -256,7 +423,7 @@ function CBrowser:renderBrowser()
     --Close Button (This button will not change the x position if the browser will maximized)
     dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40, by, 40, self.menuIconSizeY, tocolor(215, 0, 0))
 
-    --Buttons (back, forward, refresh, home)
+    --Buttons (back, forward, refresh, home, favo)
     local mbx, mby = bx + self.menuOffset + 5, self.browserStartY + self.browserTabHeight --Start positions for menu buttons (tabBrowserX/Y)
     dxDrawImage(mbx + 36*0, mby + 5, 24, 24, "res/img/back.png", 0, 0, 0, tocolor(120, 120, 120))
     dxDrawImage(mbx + 36*1, mby + 5, 24, 24, "res/img/forward.png", 0, 0, 0, tocolor(120, 120, 120))
@@ -264,8 +431,10 @@ function CBrowser:renderBrowser()
     dxDrawImage(mbx + 36*3, mby + 5, 24, 24, "res/img/home.png", 0, 0, 0, tocolor(120, 120, 120))
 
     --URL edir bar
-    dxDrawRectangle(mbx + 36*4, mby + 5,  - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2, 24, tocolor(245, 245, 245))
-    dxDrawText(("%s"):format(self.tabs[self.currentTab].browser:getURL()), mbx + 36*4 + 5, mby + 5, mbx + 36*4 - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*3,  mby + 5 + 24, tocolor(0, 0, 0), 1, "default", "left", "center", true)
+    dxDrawRectangle(mbx + 36*4, mby + 5,  - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2 - 24-5, 24, self.urlColor)
+    dxDrawText(("%s"):format(self.tabs[self.currentTab].browser:getURL()), mbx + 36*4 + 5, mby + 5, mbx + self.browserSizeX - self.menuOffset*2 - 5*3,  mby + 5 + 24, tocolor(0, 0, 0), 1, "default", "left", "center", true)
+
+    dxDrawImage(mbx + self.browserSizeX - self.menuOffset*2 - 5*2 - 24, mby + 5, 24, 24, "res/img/favo.png", 0, 0, 0, tocolor(255, 0, 0))
 
     --Draw some awesome epic supi dupi lines :>
     --Upper line for menu bar, draw from left window to first tab
@@ -286,41 +455,57 @@ function CBrowser:renderBrowser()
         local tabColor = i == self.currentTab and tocolor(215, 215, 215) or tocolor(150, 150, 150)
 
         dxDrawRectangle(tabStartX, ty, self.tabSize, self.menuIconSizeY + 5, tabColor)
+        dxDrawImage(tabStartX + self.tabSize - 14 - 5, ty + self.tabHeight/2-14/2, 14, 14, "res/img/close.png")
         dxDrawLine(tabStartX, ty, tabStartX, ty + self.menuIconSizeY + 5, self.lineColor)
         dxDrawText(tostring(tab.browser:getTitle()), tabStartX + 5, ty, tabStartX + self.tabSize - 10, ty + self.menuIconSizeY + 5, tocolor(0, 0, 0), 1, "default", "left", "center", true)
 
 
         if i == #self.tabs then
             dxDrawLine(tabStartX + self.tabSize, ty, tabStartX + self.tabSize, ty + self.menuIconSizeY + 5, self.lineColor)
+            --Draw 'createTab' image
+            dxDrawImage(tabStartX + self.tabSize + 5, ty + self.tabHeight/2-18/2, 18, 18, "res/img/create_tab.png")
         end
     end
 
-    --Browser
-    --dxDrawRectangle(bx + self.menuOffset, by + self.browserTabHeight + self.browserMenuHeight, self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset)
-    dxDrawImage(bx + self.menuOffset, by + self.browserTabHeight + self.browserMenuHeight, self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, self.tabs[self.currentTab].browser)
+    --Last but not least.. render browser^^.
+    self.browserElementStartX = bx + self.menuOffset
+    self.browserElementStartY = by + self.browserTabHeight + self.browserMenuHeight
+    dxDrawImage(self.browserElementStartX, self.browserElementStartY, self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, self.tabs[self.currentTab].browser)
+end
 
+--//
+--|| Pre Rendering for browser position/size
+--\\
+function CBrowser:preRenderBrowser()
     --If the browser is maximized, end here and do not change position/size
     if self.isMaximized then return end
-    ---------------
+
     if self.mouseClickActive then
         if self.browserMoving then
             local cX, cY = getCursorPosition()
             self.browserStartX, self.browserStartY = cX*x-self.diff[1], cY*y-self.diff[2]
+            -- self.browserElementStartX = self.browserSizeX - self.menuOffset*2
+            -- self.browserElementStartY = self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset
         end
 
         if self.browserChangingSize then
             local fx, fy = getCursorPosition()
             local x, y = fx*x, fy*y
-            self.browserSizeX = x - self.browserStartX
-            self.browserSizeY = y - self.browserStartY
+            local tmpX, tmpY = x - self.browserStartX, y - self.browserStartY
 
-            if self.browserSizeX < 400 then
-                self.browserSizeX = 400
+
+            if tmpX < 400 then
+                tmpX = 400
             end
 
-            if self.browserSizeY < 150 then
-                self.browserSizeY = 150
+            if tmpY < 150 then
+                tmpY = 150
             end
+
+            self.browserSizeX = tmpX
+            self.browserSizeY = tmpY
+
+            self:calculateTabSize()
         end
     end
 end
