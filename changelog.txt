@@ -1,0 +1,23 @@
+== PewX Awesome Browser v0.1 ==
++ Main release
+
+== PewX Awesome Browser v0.2 ==
++ Press F2 to open a new tab
++ Resize fix (CEF Browser will recreated, if the browser size was changed)
+
+== PewX Awesome Browser v0.3 ==
++ Tabs can now opened with the '+' button at the right position of last tab
++ Close tabs with the 'x' button
++ Tabs will auto resized to fit in the browser window
++ Favo icon at the right position of URL bar
++ Improved documentation for methods/functions
+
+== PewX Awesome Browser v0.4 ==
++ Tabs can now close with middle mouse button
++ Ability to navigate with back, forward and reload
++ Fixed tab lines
++ Hover effects for all buttons
++ Lines around URL Edit box (looks better :P)
++ URL Edit box is now working
++ Maximise or Minimize the browser
++ Improved project structure

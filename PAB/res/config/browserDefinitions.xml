@@ -1,0 +1,11 @@
+<browser>
+    <config>
+        <command>browser</command>
+        <movable>true</movable>
+        <sizeable>true</sizeable>
+        <maxTabCount>0</maxTabCount> <!--0 = unlimited-->
+        <startupMode>minimized</startupMode>
+        <startupSizeX>460</startupSizeX>
+        <startupSizeY>320</startupSizeY>
+    </config>
+</browser>
