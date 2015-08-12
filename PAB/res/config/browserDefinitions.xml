@@ -8,4 +8,58 @@
         <startupSizeX>460</startupSizeX>
         <startupSizeY>320</startupSizeY>
     </config>
+
+    <colors>
+        <!--BrowserWindow-->
+        <browserWindow>
+            <browser_active>70,120,180</browser_active>
+            <browser_nonActive>190,190,190</browser_nonActive>
+
+            <lines>80,80,80</lines>
+            <edit_URL>190,190,190</edit_URL>
+
+            <closeBackground>0,0,0,0</closeBackground>
+            <close>80,80,80</close>
+
+            <closeBackground_hover>200,0,0</closeBackground_hover>
+            <close_hover>180,180,180</close_hover>
+
+            <maximizeBackground>0,0,0,0</maximizeBackground>
+            <maximize>80,80,80</maximize>
+
+            <maximizeBackground_hover>0,0,0,0</maximizeBackground_hover>
+            <maximize_hover>80,80,80</maximize_hover>
+        </browserWindow>
+
+        <!--FavoriteButton-->
+        <favoButton>
+            <background>200,200,200</background>
+            <icon>120,120,120</icon>
+
+            <background_hovered>180,180,180</background_hovered>
+            <icon_hovered>90,90,90</icon_hovered>
+
+            <background_active>200,200,200</background_active>
+            <icon_active>200,0,0</icon_active>
+
+            <background_clicked>120,120,120</background_clicked> <!--Todo-->
+            <icon_clicked>80,80,80</icon_clicked>                <!--Todo-->
+        </favoButton>
+
+        <tabs>
+            <closeBackground>0,0,0,0</closeBackground>
+            <close>80,80,80</close>
+
+            <closeBackground_hover>50,50,50</closeBackground_hover>
+            <close_hover>230,230,230</close_hover>
+
+            <tab_nonActive>150,150,150</tab_nonActive>
+            <tab_active>215,215,215</tab_active>
+
+            <newTab>30,30,30</newTab>
+            <newTab_hovered>170,170,170</newTab_hovered>
+        </tabs>
+
+
+    </colors>
 </browser>
