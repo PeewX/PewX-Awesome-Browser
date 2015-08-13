@@ -10,7 +10,12 @@
         <script src = "server/CBrowser.lua" type = "server" />
 
     <!--Client-->
-        <script src = "client/classes/CBrowser.lua" type = "client" cache = "false"/>
+        <!--Core-->
+        <script src = "client/system/CCore.lua" type = "client" cache = "false" />
+
+        <!--Manager & Classes-->
+        <script src = "client/classes/CBrowser/CBrowserManager.lua" type = "client" cache = "false" />
+        <script src = "client/classes/CBrowser/CBrowser.lua" type = "client" cache = "false"/>
 
         <script src = "client/classes/dxGUI/CDX__Manager.lua" type = "client" cache = "false" />
         <script src = "client/classes/dxGUI/CDXEdit.lua" type = "client" cache = "false" />
@@ -18,6 +23,7 @@
 
 
     <!--Files-->
+        <file src = "res/config/browserDefinitions.xml" />
         <file src = "res/img/back.png" />
         <file src = "res/img/forward.png" />
         <file src = "res/img/home.png" />

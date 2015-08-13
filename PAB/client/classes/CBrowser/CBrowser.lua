@@ -58,7 +58,24 @@ function CBrowser:destructor()
 end
 
 function CBrowser:initColors()
-    self.mainColor = tocolor(70, 120, 180)
+    local colors = Core:getManager("CBrowserManager"):getColors()
+    if not colors then
+        outputChatBox("Cant get colors from manager")
+        --self:initialiseFailed()
+        return
+    end
+
+    self.colors = colors
+    --self.colors = {}
+
+    for masterKey, subTable in pairs(self.colors) do
+        self.colors[masterKey] = {}
+       for subKey, sValue in pairs(subTable) do
+          local color = split(sValue, ",")
+          self.colors[masterKey][subKey] = tocolor(color[1], color[2], color[3], color[4] or 255)
+       end
+    end
+    --[[self.mainColor = tocolor(70, 120, 180)
     self.lineColor = tocolor(80, 80 ,80)
     self.urlColor = tocolor(250, 250, 250)
 
@@ -86,7 +103,7 @@ function CBrowser:initColors()
     self.maximizeButtonIconColor = self.defaultMaximizeButtonIconColor
 
     self.defaultButtonColor = tocolor(100, 100, 100)
-    self.ButtonColor = self.defaultButtonColor
+    self.ButtonColor = self.defaultButtonColor]]
 end
 
 function CBrowser:initBrowserSize()
@@ -131,14 +148,15 @@ function CBrowser:onClick(sButton, sState)
     if sState == "down" then
         --Check, if the browser was clicked, if not, return all inputs
         if isHover(self.browserStartX, self.browserStartY, self.browserSizeX, self.browserSizeY) then
-            self.mainColor = tocolor(70, 120, 180)
+            self.colors.browserWindow.browser = self.colors.browserWindow.browser_active
             self.isActive = true
             guiSetInputEnabled(false)
         else
             guiSetInputEnabled(true)
-            self.mainColor = tocolor(190, 190, 190)
+            self.colors.browserWindow.browser = self.colors.browserWindow.browser_nonActive
             self.isActive = false
             self.mouseClickActive = false
+            self:defocus()
             return
         end
 
@@ -298,11 +316,12 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
     end
 
     if isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40, self.browserStartY, 40, self.menuIconSizeY) then
-        self.closeButtonColor = tocolor(200, 0, 0)
-        self.closeButtonIconColor = tocolor(180, 180, 180)
+        self.colors.browserWindow.close = self.colors.browserWindow.close_hover
+        self.colors.browserWindow.closeBackground = self.colors.browserWindow.closeBackground_hover
+        --self.closeButtonColor = tocolor(200, 0, 0)
     else
-        self.closeButtonColor = self.defaultCloseButtonColor
-        self.closeButtonIconColor = self.defaultCloseButtonIconColor
+        self.colors.browserWindow.close = self.colors.browserWindow.close_nonHover
+        self.colors.browserWindow.closeBackground = self.colors.browserWindow.closeBackground_nonHover
     end
 
     if isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40*2, self.browserStartY, 40, self.menuIconSizeY) then
@@ -642,18 +661,18 @@ function CBrowser:renderBrowser()
     local bx, by = self.browserStartX, self.browserStartY   --Shortcut for browser start position
 
     --Main Window
-    dxDrawRectangle(bx, by, self.browserSizeX, self.browserSizeY, self.mainColor)
+    dxDrawRectangle(bx, by, self.browserSizeX, self.browserSizeY, self.colors.browserWindow.browser)
 
-    --Menu bar for previous/next page, speed dial buttons and URL edit
-    dxDrawRectangle(bx + self.menuOffset, by + self.browserTabHeight, self.browserSizeX  - self.menuOffset*2, self.browserMenuHeight, tocolor(215, 215, 215))
+    --Navigation bar bar for navigation elements
+    dxDrawRectangle(bx + self.menuOffset, by + self.browserTabHeight, self.browserSizeX  - self.menuOffset*2, self.browserMenuHeight, self.colors.browserWindow.navigationBar)
 
     --Menu Button
-    dxDrawRectangle(bx + self.menuOffset, by, self.menuIconSizeX, self.menuIconSizeY, tocolor(240, 240, 240))
+    --dxDrawRectangle(bx + self.menuOffset, by, self.menuIconSizeX, self.menuIconSizeY, tocolor(240, 240, 240))
 
     --Window buttons
-    dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40, by, 40, self.menuIconSizeY, self.closeButtonColor)            --Close
+    dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40, by, 40, self.menuIconSizeY, self.colors.browserWindow.closeBackground)            --Close
     dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40*2, by, 40, self.menuIconSizeY, self.maximizeButtonColor)       --Maximize
-    dxDrawImage(bx + self.browserSizeX - self.defaultMenuOffset - 40/2-18/2, by + self.menuIconSizeY/2-18/2, 18, 18, "res/img/close.png", 0, 0, 0, self.closeButtonIconColor)
+    dxDrawImage(bx + self.browserSizeX - self.defaultMenuOffset - 40/2-18/2, by + self.menuIconSizeY/2-18/2, 18, 18, "res/img/close.png", 0, 0, 0, self.colors.browserWindow.close)
     dxDrawImage(bx + self.browserSizeX - self.defaultMenuOffset - 40 - 40/2-18/2, by + self.menuIconSizeY/2-18/2, 18, 18, "res/img/maximize.png", 0, 0, 0, self.maximizeButtonIconColor)
 
     --Buttons (back, forward, refresh, home, favo)

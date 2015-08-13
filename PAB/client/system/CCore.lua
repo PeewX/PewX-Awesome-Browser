@@ -26,9 +26,9 @@ function CCore:startScript()
     for _, v in ipairs(self.managers) do
         if (type(_G[v[1]]) == "table") then
             self[tostring(v[1])] = new(_G[v[1]], unpack(v[2]))
-            debugOutput(("[CCore] Loading manager '%s'"):format(tostring(v[1])))
+            outputDebugString(("[CCore] Loading manager '%s'"):format(tostring(v[1])))
         else
-            debugOutput(("[CCore] Couldn't find manager '%s'"):format(tostring(v[1])))
+            outputDebugString(("[CCore] Couldn't find manager '%s'"):format(tostring(v[1])))
         end
     end
 end
@@ -37,9 +37,9 @@ end
 addEventHandler("onClientResourceStart", resourceRoot,
     function()
         local s = getTickCount()
-        debugOutput("[CCore] Starting iGaming")
+        outputDebugString("[CCore] Starting iGaming")
         Core = new(CCore)
         Core:startScript()
-        debugOutput(("[CCore] Starting finished (%sms)"):format(getTickCount()-s))
+        outputDebugString(("[CCore] Starting finished (%sms)"):format(getTickCount()-s))
     end
 )

@@ -16,7 +16,7 @@ function CBrowserManager:destructor()
 
 end
 
-function CBrowserManager:initBrowserDefinitions()
+function CBrowserManager:loadBrowserDefinitions()
     local xml = XML.load(self.sConfigPath)
     if not xml then return end
 
@@ -33,12 +33,17 @@ function CBrowserManager:initBrowserDefinitions()
     self.tColorDefinitions = {}
 
     for _, eMasterChild in ipairs(eColorsNode:getChildren()) do
-        self.tColorDefinitions[eMasterChild] = {}
+        self.tColorDefinitions[eMasterChild:getName()] = {}
 
         for _, eChild in ipairs(eMasterChild:getChildren()) do
-           self.tColorDefinitions[eChild:getName()] = eChild:getValue()
+           self.tColorDefinitions[eMasterChild:getName()][eChild:getName()] = eChild:getValue()
        end
     end
 
+    xml:unload()
     self.bDefinitionsLoaded = true
+end
+
+function CBrowserManager:getColors()
+    return self.tColorDefinitions
 end

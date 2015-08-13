@@ -12,17 +12,21 @@
     <colors>
         <!--BrowserWindow-->
         <browserWindow>
+            <browser>190,190,190</browser>
             <browser_active>70,120,180</browser_active>
             <browser_nonActive>190,190,190</browser_nonActive>
 
             <lines>80,80,80</lines>
             <edit_URL>190,190,190</edit_URL>
+            <navigationBar>215,215,215</navigationBar>
+
+            <close>80,80,80</close>
+            <close_hover>180,180,180</close_hover>
+            <close_nonHover>80,80,80</close_nonHover>
 
             <closeBackground>0,0,0,0</closeBackground>
-            <close>80,80,80</close>
-
             <closeBackground_hover>200,0,0</closeBackground_hover>
-            <close_hover>180,180,180</close_hover>
+            <closeBackground_nonHover>0,0,0,0</closeBackground_nonHover>
 
             <maximizeBackground>0,0,0,0</maximizeBackground>
             <maximize>80,80,80</maximize>
