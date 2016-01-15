@@ -87,5 +87,3 @@ function CDXManager:unregisterWindow(eWindow)
         end
     end
 end
-
-new(CDXManager)

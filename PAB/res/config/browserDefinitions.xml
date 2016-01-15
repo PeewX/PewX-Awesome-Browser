@@ -1,11 +1,73 @@
 <browser>
     <config>
-        <command>browser</command>
+        <info>|Info| #0080ffType /browser to open PewX' Awesome Browser</info>          <!--Chatbox output - empty for no information-->
+        <infoTimer>600</infoTimer>                                                      <!--seconds - 0 to disable the timer-->
+        <command>browser</command>                                                      <!--Commend to open the browser | let it blank to disable the command-->
         <movable>true</movable>
         <sizeable>true</sizeable>
-        <maxTabCount>0</maxTabCount> <!--0 = unlimited-->
+        <maxTabCount>0</maxTabCount>                                                    <!--0 = unlimited-->
         <startupMode>minimized</startupMode>
-        <startupSizeX>460</startupSizeX>
-        <startupSizeY>320</startupSizeY>
+        <startupSizeX>720</startupSizeX>                                                <!--Default wdith-->
+        <startupSizeY>480</startupSizeY>                                                <!--Default height-->
     </config>
+
+    <colors>
+        <!--BrowserWindow-->
+        <browserWindow>
+            <browser>175,175,175</browser>
+            <browser_active>70,120,180</browser_active>
+            <browser_nonActive>175,175,175</browser_nonActive>
+
+            <lines>80,80,80</lines>
+            <edit_URL>190,190,190</edit_URL>
+            <navigationBar>210,210,210</navigationBar>
+
+            <closeBackground>0,0,0,0</closeBackground>
+            <closeBackground_hover>200,0,0</closeBackground_hover>
+            <closeBackground_nonHover>0,0,0,0</closeBackground_nonHover>
+            <close>80,80,80</close>
+            <close_hover>180,180,180</close_hover>
+            <close_nonHover>80,80,80</close_nonHover>
+
+            <maximizeBackground>0,0,0,0</maximizeBackground>
+            <maximizeBackground_hover>100,100,100</maximizeBackground_hover>
+            <maximizeBackground_nonHover>0,0,0,0</maximizeBackground_nonHover>
+            <maximize>80,80,80</maximize>
+            <maximize_hover>180,180,180</maximize_hover>
+            <maximize_nonHover>80,80,80</maximize_nonHover>
+        </browserWindow>
+
+        <!--FavoriteButton-->
+        <favoButton>
+            <background>200,200,200</background>
+            <background_hover>180,180,180</background_hover>
+            <background_nonHover>200,200,180</background_nonHover>
+            <background_active>200,200,200</background_active>
+
+            <icon>120,120,120</icon>
+            <icon_hover>90,90,90</icon_hover>
+            <icon_nonHover>120,120,120</icon_nonHover>
+            <icon_active>200,0,0</icon_active>
+        </favoButton>
+
+        <!--Tabs-->
+        <tabs>
+            <closeBackground>0,0,0,0</closeBackground>
+            <closeBackground_hover>50,50,50</closeBackground_hover>
+            <closeBackground_nonHover>0,0,0,0</closeBackground_nonHover>
+
+            <close>80,80,80</close>
+            <close_hover>230,230,230</close_hover>
+            <close_nonHover>80,80,80</close_nonHover>
+
+            <tab_active>210,210,210</tab_active>
+            <tab_nonActive>150,150,150</tab_nonActive>
+
+            <newTab>30,30,30</newTab>
+            <newTab_hover>170,170,170</newTab_hover>
+            <newTab_nonHover>30,30,30</newTab_nonHover>
+        </tabs>
+    </colors>
+
+    <!--Todo: Browser size configuration-->
 </browser>

@@ -115,7 +115,7 @@ end
 
 function delete(self, ...)
     if self.destructor then --if rawget(self, "destructor") then
-    self:destructor(...)
+        self:destructor(...)
     end
 
     -- Prevent the destructor to be called twice
@@ -277,7 +277,7 @@ oop.prepareClass = function(name)
             if not oop.elementInfo[self] and isElement(self) then
                 enew(self, oop.elementClasses[getElementType(self)] or {})
             end
-            if oop.elementInfo[self][key] ~= nil  then
+            if oop.elementInfo[self] and oop.elementInfo[self][key] ~= nil  then
                 oop.handled = false
                 return oop.elementInfo[self][key]
             end
