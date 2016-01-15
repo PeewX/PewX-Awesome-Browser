@@ -58,6 +58,7 @@ function CBrowser:destructor()
     removeEventHandler("onClientKey", root, self.clientKeyFunc)
     removeEventHandler("onClientBrowserNavigate", root, self.navigateFunc)
     removeEventHandler("onClientBrowserDocumentReady", root, self.documentReadyFunc)
+	removeEventHandler("onClientBrowserWhitelistChange", root, self.whitelistChangeFunc)
 
     showCursor(false)
 
@@ -116,6 +117,7 @@ function CBrowser:initFunctionHandles()
     self.clientKeyFunc = bind(CBrowser.onClientKey, self)
     self.navigateFunc = bind(CBrowser.onBrowserNavigate, self)
     self.documentReadyFunc = bind(CBrowser.onDocumentReady, self)
+    self.whitelistChangeFunc = bind(CBrowser.onWhitelistChange, self)
 end
 
 ---
@@ -369,7 +371,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
         end
 
         if i == #self.tabs then
-            if isHover(tabStartX + self.tabSize + 5, self.browserStartY + 18/2, 18, 18) then
+            if isHover(tabStartX + self.tabSize + 2, self.browserStartY + 2, 18, 18) then
                 self.colors.tabs.newTab = self.colors.tabs.newTab_hover
                 return
             else
@@ -386,6 +388,9 @@ function CBrowser:onClientKey(sButton, bState)
     if bState and sButton == "enter" then
         if self.urlBar.clicked then
             local navigateTo = self.urlBar:getText()
+			if not navigateTo:find("http://") or not navigateTo:find("https://") then
+				navigateTo = "http://"..navigateTo
+			end
             self:loadURL(navigateTo)
         end
         return
@@ -418,7 +423,6 @@ end
 function CBrowser:onDocumentReady(sURL)
     self.urlBar:setText(sURL)
     local currentTab = self.tabs[self.currentTab]
-
     if currentTab.history[currentTab.historyIndex] == sURL then
         return
     end
@@ -433,13 +437,33 @@ function CBrowser:onDocumentReady(sURL)
     currentTab.historyIndex = #currentTab.history
 end
 
+
+---
+-- Event: onClientBrowserWhitelistChange | Reload the current tab if the URL got whitelisted
+---
+
+function CBrowser:onWhitelistChange(tblGrantedURLs)
+	local sURL = self.tabs[self.currentTab].previousBlockedURL
+	if sURL then
+		for i, v in pairs(tblGrantedURLs) do
+			if sURL:gfind(v) then
+				outputChatBox(sURL)
+				self.tabs[self.currentTab].URL = sURL
+				self:reloadCurrentTab()
+			end
+		end
+	end
+end
+
 ---
 -- Todo: navigateTO
 ---
 function CBrowser:navigateTo(_, sNavigateTo)
     if not self.isActive then return end
     if Browser.isDomainBlocked(sNavigateTo, true) then
+		Browser.requestDomains({sNavigateTo}, true)
         outputChatBox("Returned: Domain is blocked!")
+		self.tabs[self.currentTab].previousBlockedURL = sNavigateTo
         return
     end
 
@@ -485,6 +509,7 @@ function CBrowser:toggleBrowser()
         removeEventHandler("onClientKey", root, self.clientKeyFunc)
         removeEventHandler("onClientBrowserNavigate", root, self.navigateFunc)
         removeEventHandler("onClientBrowserDocumentReady", root, self.documentReadyFunc)
+        removeEventHandler("onClientBrowserWhitelistChange", root, self.whitelistChangeFunc)
         showCursor(false)
         return
     end
@@ -498,6 +523,7 @@ function CBrowser:toggleBrowser()
         addEventHandler("onClientKey", root, self.clientKeyFunc)
         addEventHandler("onClientBrowserNavigate", root, self.navigateFunc)
         addEventHandler("onClientBrowserDocumentReady", root, self.documentReadyFunc)
+        addEventHandler("onClientBrowserWhitelistChange", root, self.whitelistChangeFunc)
         showCursor(true)
         return
     end
@@ -524,6 +550,7 @@ function CBrowser:toggleBrowserSize()
         self.menuOffset = self.defaultMenuOffset
 
         self.urlBar:setProperty("w", - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2)
+		self:calculateTabSize()
         return
     end
 
@@ -537,6 +564,7 @@ function CBrowser:toggleBrowserSize()
         self.menuOffset = 0
 
         self.urlBar:setProperty("w", - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2)
+		self:calculateTabSize()
         return
     end
 end
@@ -560,7 +588,9 @@ end
 function CBrowser:loadURL(sURL)
     --self.tabs[self.currentTab].URL = sURL
     if Browser.isDomainBlocked(sURL, true) then
-        outputChatBox("Domain is blocked, lel")
+        outputChatBox(sURL.." is blocked")
+		Browser.requestDomains({sURL}, true)
+		self.tabs[self.currentTab].previousBlockedURL = sURL
         return
     end
     self.tabs[self.currentTab].browser:loadURL(sURL)
@@ -696,7 +726,11 @@ function CBrowser:renderBrowser()
     local mbx, mby = bx + self.menuOffset + 5, self.browserStartY + self.browserTabHeight --Start positions for menu buttons (tabBrowserX/Y)
     dxDrawImage(mbx + 36*0, mby + 5, 24, 24, "res/img/back.png", 0, 0, 0, tocolor(120, 120, 120))
     dxDrawImage(mbx + 36*1, mby + 5, 24, 24, "res/img/forward.png", 0, 0, 0, tocolor(120, 120, 120))
-    dxDrawImage(mbx + 36*2, mby + 5, 24, 24, "res/img/refresh.png", 0, 0, 0, tocolor(120, 120, 120))
+	if isBrowserLoading(self.tabs[self.currentTab].browser) then
+	    dxDrawImage(mbx + 36*2, mby + 5, 24, 24, "res/img/refresh.png", (getTickCount()/2)%360, 0, 0, tocolor(120, 120, 120))
+	else
+		dxDrawImage(mbx + 36*2, mby + 5, 24, 24, "res/img/refresh.png", 0, 0, 0, tocolor(120, 120, 120))
+	end
     dxDrawImage(mbx + 36*3, mby + 5, 24, 24, "res/img/home.png", 0, 0, 0, tocolor(120, 120, 120))
 
     local itemTable = {"navigationButtonBackHovered", "navigationButtonForwardHovered", "navigationButtonReloadHovered", "navigationButtonHomeHovered"}
