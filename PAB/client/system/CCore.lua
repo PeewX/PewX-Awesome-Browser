@@ -37,7 +37,7 @@ end
 addEventHandler("onClientResourceStart", resourceRoot,
     function()
         local s = getTickCount()
-        outputDebugString("[CCore] Starting iGaming")
+        outputDebugString("[CCore] Starting PAB")
         Core = new(CCore)
         Core:startScript()
         outputDebugString(("[CCore] Starting finished (%sms)"):format(getTickCount()-s))

@@ -9,7 +9,9 @@ CBrowser = {}
 
 function CBrowser:constructor(startX, startY)
     --Browser start properties
-    self.isVisible = false
+    self.browserDefaultSizeX = startX or 640
+    self.browserDefaultSizeY = startY or 480
+    self.state = true
     self.isActive = true
 
     self.tabCloseHoveredIndex = 0
@@ -19,7 +21,9 @@ function CBrowser:constructor(startX, startY)
     ---
     --Colors
     ---
-    self:initColors()
+    if not self:initColors() then
+        return
+    end
 
     ---
     --Browser size configuration
@@ -47,12 +51,17 @@ end
 
 function CBrowser:destructor()
     removeCommandHandler("navigate", self.commandFunc)
+    removeEventHandler("onClientCursorMove", root, self.cursorMoveFunc)
     removeEventHandler("onClientRender", root, self.renderFunc)
     removeEventHandler("onClientClick", root, self.onClickFunc)
-    unbindKey("F1", "down", self.bindKeyFunc)
-    unbindKey("F2", "down", self.bindKeyFunc2)
+    removeEventHandler("onClientPreRender", root, self.preRenderFunc)
+    removeEventHandler("onClientKey", root, self.clientKeyFunc)
+    removeEventHandler("onClientBrowserNavigate", root, self.navigateFunc)
+    removeEventHandler("onClientBrowserDocumentReady", root, self.documentReadyFunc)
 
-    for i, v in pairs(self) do
+    showCursor(false)
+
+    for _, v in pairs(self) do
         v = nil
     end
 end
@@ -60,56 +69,25 @@ end
 function CBrowser:initColors()
     local colors = Core:getManager("CBrowserManager"):getColors()
     if not colors then
-        outputChatBox("Cant get colors from manager")
-        --self:initialiseFailed()
-        return
+        return false
     end
 
-    self.colors = colors
-    --self.colors = {}
-
-    for masterKey, subTable in pairs(self.colors) do
+    self.colors = {}
+    for masterKey, subTable in pairs(colors) do
         self.colors[masterKey] = {}
        for subKey, sValue in pairs(subTable) do
           local color = split(sValue, ",")
+          --outputChatBox(("[%s][%s]: [%s], [%s], [%s]"):format(tostring(masterKey), tostring(subKey), tostring(color[1]), tostring(color[2]), tostring(color[3])))
           self.colors[masterKey][subKey] = tocolor(color[1], color[2], color[3], color[4] or 255)
        end
     end
-    --[[self.mainColor = tocolor(70, 120, 180)
-    self.lineColor = tocolor(80, 80 ,80)
-    self.urlColor = tocolor(250, 250, 250)
+    self.colors.browserWindow.browser = self.colors.browserWindow.browser_active
 
-    self.defaultFavoBackgroundColor = tocolor(200, 200, 200)
-    self.defaultFavoIconColor = tocolor(120, 120, 120)
-    self.FavoBackgroundColor = self.defaultFavoBackgroundColor
-    self.FavoIconColor = self.defaultFavoIconColor
-
-    self.defaultTabCloseBackgroundColor = tocolor(0, 0, 0, 0)
-    self.defaultTabCloseIconColor = tocolor(80, 80, 80)
-    self.tabCloseBackgroundColor =  self.defaultTabCloseBackgroundColor
-    self.tabCloseIconColor = self.defaultTabCloseIconColor
-
-    self.defaultNewTabIconColor = tocolor(30, 30, 30)
-    self.newTabIconColor = self.defaultNewTabIconColor
-
-    self.defaultCloseButtonIconColor = tocolor(80, 80, 80)
-    self.defaultCloseButtonColor = tocolor(0, 0, 0, 0)
-    self.closeButtonColor = self.defaultCloseButtonColor
-    self.closeButtonIconColor = self.defaultCloseButtonIconColor
-
-    self.defaultMaximizeButtonIconColor = tocolor(80, 80, 80)
-    self.defaultMaximizeButtonColor = tocolor(0, 0, 0, 0)
-    self.maximizeButtonColor = self.defaultMaximizeButtonColor
-    self.maximizeButtonIconColor = self.defaultMaximizeButtonIconColor
-
-    self.defaultButtonColor = tocolor(100, 100, 100)
-    self.ButtonColor = self.defaultButtonColor]]
+    return true
 end
 
 function CBrowser:initBrowserSize()
     self.isMaximized = false
-    self.browserDefaultSizeX = startX or 460
-    self.browserDefaultSizeY = startY or 320
 
     self.browserSizeX = self.browserDefaultSizeX/1920*x
     self.browserSizeY = self.browserDefaultSizeY/1080*y
@@ -145,6 +123,7 @@ end
 ---
 function CBrowser:onClick(sButton, sState)
     if sButton == "right" then return end
+
     if sState == "down" then
         --Check, if the browser was clicked, if not, return all inputs
         if isHover(self.browserStartX, self.browserStartY, self.browserSizeX, self.browserSizeY) then
@@ -237,18 +216,15 @@ function CBrowser:onClick(sButton, sState)
                 self.tabChanged = true
                 self.mouseClickActive = false
                 if tab.resize then
-                    tab.resize = false
-                    if isElement(self.tabs[self.currentTab].browser) then
-                        destroyElement(self.tabs[self.currentTab].browser)
-                    end
-                    self.tabs[self.currentTab].browser = Browser(self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, false, false)
-                    addEventHandler("onClientBrowserCreated", self.tabs[self.currentTab].browser,
-                        function()
-                            source:loadURL(self.tabs[self.currentTab].URL)
-                        end
-                    )
-
+                    self:reloadCurrentTab()
                 end
+
+                if self.tabs[self.currentTab].browser:getURL() then
+                    self.urlBar:setText(self.tabs[self.currentTab].browser:getURL())
+                elseif self.tabs[self.currentTab].URL then
+                    self.urlBar:setText(self.tabs[self.currentTab].URL)
+                end
+
                 return
             end
 
@@ -278,7 +254,7 @@ function CBrowser:onClick(sButton, sState)
         self.tabs[self.currentTab].browser:injectMouseUp(sButton)
         guiSetInputEnabled(true)
         self.mouseClickActive = false
-        if self.currentBrowserSize[1] ~= self.browserSizeX or self.currentBrowserSize[2] ~= self.browserSizeY then
+        if self.currentBrowserSize and (self.currentBrowserSize[1] ~= self.browserSizeX or self.currentBrowserSize[2] ~= self.browserSizeY) then
             if isElement(self.tabs[self.currentTab].browser) then
                 self.tabs[self.currentTab].URL = self.tabs[self.currentTab].browser:getURL()
                 destroyElement(self.tabs[self.currentTab].browser)
@@ -315,33 +291,37 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
         end
     end
 
+    ---Close Icon
     if isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40, self.browserStartY, 40, self.menuIconSizeY) then
         self.colors.browserWindow.close = self.colors.browserWindow.close_hover
         self.colors.browserWindow.closeBackground = self.colors.browserWindow.closeBackground_hover
-        --self.closeButtonColor = tocolor(200, 0, 0)
+        return
     else
         self.colors.browserWindow.close = self.colors.browserWindow.close_nonHover
         self.colors.browserWindow.closeBackground = self.colors.browserWindow.closeBackground_nonHover
     end
 
+    ---Maximize Icon
     if isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40*2, self.browserStartY, 40, self.menuIconSizeY) then
-        self.maximizeButtonColor = tocolor(100, 100, 100)
-        self.maximizeButtonIconColor = tocolor(30, 30, 30)
-    else
-        self.maximizeButtonColor =  self.defaultMaximizeButtonColor
-        self.maximizeButtonIconColor =  self.defaultMaximizeButtonIconColor
-    end
-
-    if isHover(self.browserStartX + self.menuOffset + 5 + self.browserSizeX - self.menuOffset*2 - 5*2 - 24, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
-        self.FavoBackgroundColor = tocolor(180, 180, 180)
-        self.FavoIconColor = tocolor(90, 90, 90)
+        self.colors.browserWindow.maximize = self.colors.browserWindow.maximize_hover
+        self.colors.browserWindow.maximizeBackground = self.colors.browserWindow.maximizeBackground_hover
         return
     else
-        self.FavoBackgroundColor = self.defaultFavoBackgroundColor
-        self.FavoIconColor = self.defaultFavoIconColor
+        self.colors.browserWindow.maximize = self.colors.browserWindow.maximize_nonHover
+        self.colors.browserWindow.maximizeBackground = self.colors.browserWindow.maximizeBackground_nonHover
     end
 
-    --Navigation button: back
+    ---Favo Icon
+    if isHover(self.browserStartX + self.menuOffset + 5 + self.browserSizeX - self.menuOffset*2 - 5*2 - 24, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
+        self.colors.favoButton.background = self.colors.favoButton.background_hover
+        self.colors.favoButton.icon = self.colors.favoButton.icon_hover
+        return
+    else
+        self.colors.favoButton.background = self.colors.favoButton.background_nonHover
+        self.colors.favoButton.icon = self.colors.favoButton.icon_nonHover
+    end
+
+    ---Navigation button: back
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*0, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonBackHovered = true
         return
@@ -349,7 +329,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
         self.navigationButtonBackHovered = false
     end
 
-    --Navigation button: forward
+    ---Navigation button: forward
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*1, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonForwardHovered = true
         return
@@ -357,7 +337,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
         self.navigationButtonForwardHovered = false
     end
 
-    --Navigation button: reloads
+    ---Navigation button: reloads
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*2, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonReloadHovered = true
         return
@@ -365,7 +345,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
         self.navigationButtonReloadHovered = false
     end
 
-    --Navigation button: SpeedDial/start
+    ---Navigation button: SpeedDial/start
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*3, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonHomeHovered = true
         return
@@ -373,25 +353,27 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
         self.navigationButtonHomeHovered = false
     end
 
+    ---Tabs
     for i, tab in ipairs(self.tabs) do
         local tabStartX =  self.browserStartX + self.menuOffset + self.menuIconSizeX + 5 + (self.tabSize*(i-1))
 
         if isHover(tabStartX + self.tabSize - 14 - 5, self.browserStartY + self.tabHeight/2-14/2, 14, 14) then
             self.tabCloseHoveredIndex = i
-            self.tabCloseBackgroundColor = tocolor(50, 50, 50)
-            self.tabCloseIconColor = tocolor(230, 230, 230)
+
+            self.colors.tabs.closeBackground = self.colors.tabs.closeBackground_hover
+            self.colors.tabs.close = self.colors.tabs.close_hover
             return
         else
-            self.tabCloseBackgroundColor =  self.defaultTabCloseBackgroundColor
-            self.tabCloseIconColor = self.defaultTabCloseIconColor
+            self.colors.tabs.closeBackground = self.colors.tabs.closeBackground_nonHover
+            self.colors.tabs.close = self.colors.tabs.close_nonHover
         end
 
         if i == #self.tabs then
             if isHover(tabStartX + self.tabSize + 5, self.browserStartY + 18/2, 18, 18) then
-                self.newTabIconColor = tocolor(120, 0, 0)
+                self.colors.tabs.newTab = self.colors.tabs.newTab_hover
                 return
             else
-                self.newTabIconColor = self.defaultNewTabIconColor
+                self.colors.tabs.newTab = self.colors.tabs.newTab_nonHover
             end
         end
     end
@@ -527,6 +509,7 @@ end
 function CBrowser:toggleBrowserSize()
     if self.isMaximized then
         if self.lastMinimizedPosition then
+            self.moveDelay = getTickCount() + 200
             self.browserStartX = self.lastMinimizedPosition.startX
             self.browserStartY = self.lastMinimizedPosition.startY
             self.browserSizeX = self.lastMinimizedPosition.sizeX
@@ -539,6 +522,8 @@ function CBrowser:toggleBrowserSize()
         end
         self.isMaximized = false
         self.menuOffset = self.defaultMenuOffset
+
+        self.urlBar:setProperty("w", - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2)
         return
     end
 
@@ -550,6 +535,8 @@ function CBrowser:toggleBrowserSize()
         self.browserSizeY = y
         self.isMaximized = true
         self.menuOffset = 0
+
+        self.urlBar:setProperty("w", - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2)
         return
     end
 end
@@ -587,9 +574,33 @@ function CBrowser:getPosition()
 end
 
 ---
--- Create a tab; create browser element and navigate to default website
+-- Reload tab; re create browser element to fix size and load last known website
+----
+function CBrowser:reloadCurrentTab()
+    self.tabs[self.currentTab].resize = false
+    if isElement(self.tabs[self.currentTab].browser) then
+        destroyElement(self.tabs[self.currentTab].browser)
+    end
+    self.tabs[self.currentTab].browser = Browser(self.browserSizeX - self.menuOffset*2, self.browserSizeY - self.browserTabHeight - self.browserMenuHeight - self.menuOffset, false, false)
+    addEventHandler("onClientBrowserCreated", self.tabs[self.currentTab].browser,
+        function()
+            source:loadURL(self.tabs[self.currentTab].URL)
+            self.urlBar:setText(self.tabs[self.currentTab].URL)
+        end
+    )
+end
+
+---
+-- Create tab; create browser element and navigate to default website
 ----
 function CBrowser:createTab()
+    --Check tab limit
+    local maxTabCount = tonumber(Core:getManager("CBrowserManager").tBrowserDefinitions.maxTabCount)
+    if maxTabCount and maxTabCount ~= 0 and #self.tabs >= maxTabCount then
+        return
+    end
+
+    --Create the Tab
     local tab = {}
 
     tab.history = {}
@@ -629,6 +640,11 @@ function CBrowser:closeTab(nTabIndex)
     end
 
     table.remove(self.tabs, nTabIndex)
+
+    if self.tabs[self.currentTab].resize then
+        self:reloadCurrentTab()
+    end
+
     self:calculateTabSize()
 end
 
@@ -667,13 +683,14 @@ function CBrowser:renderBrowser()
     dxDrawRectangle(bx + self.menuOffset, by + self.browserTabHeight, self.browserSizeX  - self.menuOffset*2, self.browserMenuHeight, self.colors.browserWindow.navigationBar)
 
     --Menu Button
+    dxDrawImage(bx + self.menuOffset, by, self.menuIconSizeX, self.menuIconSizeY, "res/img/menu.png")
     --dxDrawRectangle(bx + self.menuOffset, by, self.menuIconSizeX, self.menuIconSizeY, tocolor(240, 240, 240))
 
     --Window buttons
     dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40, by, 40, self.menuIconSizeY, self.colors.browserWindow.closeBackground)            --Close
-    dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40*2, by, 40, self.menuIconSizeY, self.maximizeButtonColor)       --Maximize
+    dxDrawRectangle(bx + self.browserSizeX - self.defaultMenuOffset - 40*2, by, 40, self.menuIconSizeY, self.colors.browserWindow.maximizeBackground)       --Maximize
     dxDrawImage(bx + self.browserSizeX - self.defaultMenuOffset - 40/2-18/2, by + self.menuIconSizeY/2-18/2, 18, 18, "res/img/close.png", 0, 0, 0, self.colors.browserWindow.close)
-    dxDrawImage(bx + self.browserSizeX - self.defaultMenuOffset - 40 - 40/2-18/2, by + self.menuIconSizeY/2-18/2, 18, 18, "res/img/maximize.png", 0, 0, 0, self.maximizeButtonIconColor)
+    dxDrawImage(bx + self.browserSizeX - self.defaultMenuOffset - 40 - 40/2-18/2, by + self.menuIconSizeY/2-18/2, 18, 18, "res/img/maximize.png", 0, 0, 0, self.colors.browserWindow.maximize)
 
     --Buttons (back, forward, refresh, home, favo)
     local mbx, mby = bx + self.menuOffset + 5, self.browserStartY + self.browserTabHeight --Start positions for menu buttons (tabBrowserX/Y)
@@ -682,42 +699,23 @@ function CBrowser:renderBrowser()
     dxDrawImage(mbx + 36*2, mby + 5, 24, 24, "res/img/refresh.png", 0, 0, 0, tocolor(120, 120, 120))
     dxDrawImage(mbx + 36*3, mby + 5, 24, 24, "res/img/home.png", 0, 0, 0, tocolor(120, 120, 120))
 
-    if self.navigationButtonBackHovered then
-       dxDrawLine(mbx + 36*0, mby + 5, mbx+ 36*0 + 24, mby + 5, tocolor(160, 160, 160))
-       dxDrawLine(mbx + 36*0, mby + 5 + 24, mbx+ 36*0 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-       dxDrawLine(mbx + 36*0, mby + 5, mbx+ 36*0, mby + 5 + 24, tocolor(160, 160, 160))
-       dxDrawLine(mbx + 36*0 + 24, mby + 5, mbx+ 36*0 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-    end
-
-    if self.navigationButtonForwardHovered then
-        dxDrawLine(mbx + 36*1, mby + 5, mbx+ 36*1 + 24, mby + 5, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*1, mby + 5 + 24, mbx+ 36*1 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*1, mby + 5, mbx+ 36*1, mby + 5 + 24, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*1 + 24, mby + 5, mbx+ 36*1 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-    end
-
-    if self.navigationButtonReloadHovered then
-        dxDrawLine(mbx + 36*2, mby + 5, mbx+ 36*2 + 24, mby + 5, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*2, mby + 5 + 24, mbx+ 36*2 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*2, mby + 5, mbx+ 36*2, mby + 5 + 24, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*2 + 24, mby + 5, mbx+ 36*2 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-    end
-
-    if self.navigationButtonHomeHovered then
-        dxDrawLine(mbx + 36*3, mby + 5, mbx+ 36*3 + 24, mby + 5, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*3, mby + 5 + 24, mbx+ 36*3 + 24, mby + 5 + 24, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*3, mby + 5, mbx+ 36*3, mby + 5 + 24, tocolor(160, 160, 160))
-        dxDrawLine(mbx + 36*3 + 24, mby + 5, mbx+ 36*3 + 24, mby + 5 + 24, tocolor(160, 160, 160))
+    local itemTable = {"navigationButtonBackHovered", "navigationButtonForwardHovered", "navigationButtonReloadHovered", "navigationButtonHomeHovered"}
+    for i, itemName in ipairs(itemTable) do
+        if self[itemName] then
+            dxDrawLine(mbx + 36*(i-1), mby + 5, mbx+ 36*(i-1) + 24, mby + 5, self.colors.browserWindow.lines)
+            dxDrawLine(mbx + 36*(i-1), mby + 5 + 24, mbx+ 36*(i-1) + 24, mby + 5 + 24, self.colors.browserWindow.lines)
+            dxDrawLine(mbx + 36*(i-1), mby + 5, mbx+ 36*(i-1), mby + 5 + 24, self.colors.browserWindow.lines)
+            dxDrawLine(mbx + 36*(i-1) + 24, mby + 5, mbx+ 36*(i-1) + 24, mby + 5 + 24, self.colors.browserWindow.lines)
+        end
     end
 
     --URL edir bar
     dxDrawRectangle(mbx + 36*4, mby + 5,  - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2, 24, self.urlColor)
-    --dxDrawText(("%s"):format(self.tabs[self.currentTab].browser:getURL()), mbx + 36*4 + 5, mby + 5, mbx + self.browserSizeX - self.menuOffset*2 - 5*3,  mby + 5 + 24, tocolor(0, 0, 0), 1, "default", "left", "center", true)
     self.urlBar:render()
 
     --Favo image
-    dxDrawRectangle(mbx + self.browserSizeX - self.menuOffset*2 - 5*2 - 24, mby + 5, 24, 24, self.FavoBackgroundColor)
-    dxDrawImage(mbx + self.browserSizeX - self.menuOffset*2 - 5*2 - 21, mby + 5 + 3, 18, 18, "res/img/favo.png", 0, 0, 0, self.FavoIconColor)
+    dxDrawRectangle(mbx + self.browserSizeX - self.menuOffset*2 - 5*2 - 24, mby + 5, 24, 24, self.colors.favoButton.background)
+    dxDrawImage(mbx + self.browserSizeX - self.menuOffset*2 - 5*2 - 21, mby + 5 + 3, 18, 18, "res/img/favo.png", 0, 0, 0, self.colors.favoButton.icon)
 
     local lineColor = tocolor(160, 160, 160)
     dxDrawLine(mbx + 36*4, mby + 5, - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2 + mbx + 36*4, mby + 5, lineColor)
@@ -729,35 +727,35 @@ function CBrowser:renderBrowser()
     --Draw some awesome epic supi dupi lines :>
     --Upper line for menu bar, draw from left window to first tab
     local lpfat = bx + self.menuOffset + self.menuIconSizeX + 6 + (self.tabSize*(self.currentTab-1)) --left position from active tab
-    dxDrawLine(bx + self.menuOffset, by + self.browserTabHeight, lpfat, by + self.browserTabHeight, self.lineColor)
+    dxDrawLine(bx + self.menuOffset, by + self.browserTabHeight, lpfat, by + self.browserTabHeight, self.colors.browserWindow.lines)
 
     --Upper line for menu bar, draw from active tab to right window
     local rpfat = bx + self.menuOffset + self.menuIconSizeX + 5 + (self.tabSize*(self.currentTab))  --right position from active tab
-    dxDrawLine(rpfat, by + self.browserTabHeight, bx + self.menuOffset + self.browserSizeX  - self.menuOffset*2, by + self.browserTabHeight, self.lineColor)
+    dxDrawLine(rpfat, by + self.browserTabHeight, bx + self.menuOffset + self.browserSizeX  - self.menuOffset*2, by + self.browserTabHeight, self.colors.browserWindow.lines)
 
     --Lower line for menu bar, draw from left window to right window
-    dxDrawLine(bx + self.menuOffset, by + self.browserTabHeight + self.browserMenuHeight - 1, bx + self.menuOffset + self.browserSizeX  - self.menuOffset*2, by + self.browserTabHeight + self.browserMenuHeight - 1, self.lineColor, 1)
+    dxDrawLine(bx + self.menuOffset, by + self.browserTabHeight + self.browserMenuHeight - 1, bx + self.menuOffset + self.browserSizeX  - self.menuOffset*2, by + self.browserTabHeight + self.browserMenuHeight - 1, self.colors.browserWindow.lines, 1)
 
     --Draw Tabs
     local tx, ty = bx + self.menuOffset + self.menuIconSizeX + 5, by
     for i, tab in ipairs(self.tabs) do
         local tabStartX = tx + (self.tabSize*(i-1))
-        local tabColor = i == self.currentTab and tocolor(215, 215, 215) or tocolor(150, 150, 150)
+        local tabColor = i == self.currentTab and self.colors.tabs.tab_active or self.colors.tabs.tab_nonActive
 
         dxDrawRectangle(tabStartX, ty, self.tabSize, self.menuIconSizeY + 5, tabColor)
-        dxDrawLine(tabStartX, ty, tabStartX, ty + self.menuIconSizeY + 5, self.lineColor)
+        dxDrawLine(tabStartX, ty, tabStartX, ty + self.menuIconSizeY + 5, self.colors.browserWindow.lines)
         dxDrawText(tostring(tab.browser:getTitle()), tabStartX + 5, ty, tabStartX + self.tabSize - 14 - 5*2, ty + self.menuIconSizeY + 5, tocolor(0, 0, 0), 1, "default", "left", "center", true)
 
         --Close button
-        if self.tabCloseHoveredIndex == i and self.tabCloseBackgroundColor then
-            dxDrawRectangle(tabStartX + self.tabSize - 14 - 5, ty + self.tabHeight/2-14/2, 14, 14, self.tabCloseBackgroundColor)
+        if self.tabCloseHoveredIndex == i and self.colors.tabs.closeBackground then
+            dxDrawRectangle(tabStartX + self.tabSize - 14 - 5, ty + self.tabHeight/2-14/2, 14, 14, self.colors.tabs.closeBackground)
         end
-        dxDrawImage(tabStartX + self.tabSize - 14 - 5, ty + self.tabHeight/2-14/2, 14, 14, "res/img/close.png", 0, 0, 0, self.tabCloseHoveredIndex == i and self.tabCloseIconColor or self.defaultTabCloseIconColor)
+        dxDrawImage(tabStartX + self.tabSize - 14 - 5, ty + self.tabHeight/2-14/2, 14, 14, "res/img/close.png", 0, 0, 0, self.tabCloseHoveredIndex == i and self.colors.tabs.close or self.colors.tabs.close_nonHover)
 
         if i == #self.tabs then
-            dxDrawLine(tabStartX + self.tabSize, ty, tabStartX + self.tabSize, ty + self.menuIconSizeY + 5, self.lineColor)
+            dxDrawLine(tabStartX + self.tabSize, ty, tabStartX + self.tabSize, ty + self.menuIconSizeY + 5, self.colors.browserWindow.lines)
             --Draw 'createTab' image
-            dxDrawImage(tabStartX + self.tabSize + 5, ty + self.tabHeight/2-18/2, 18, 18, "res/img/create_tab.png", 0, 0, 0, self.newTabIconColor)
+            dxDrawImage(tabStartX + self.tabSize + 5, ty + self.tabHeight/2-18/2, 18, 18, "res/img/create_tab.png", 0, 0, 0, self.colors.tabs.newTab)
         end
     end
 
@@ -775,7 +773,7 @@ function CBrowser:preRenderBrowser()
     if self.isMaximized then return end
 
     if self.mouseClickActive then
-        if self.bypassClicks then  self.bypassClicks = false return end
+        if self.moveDelay and getTickCount() < self.moveDelay then self.mouseClickActive = false return end
 
         if self.moving then
             local cX, cY = getCursorPosition()
@@ -812,17 +810,8 @@ end
 -- A workaround to defocus the browser
 ---
 function CBrowser:defocus()
-    local browser = createBrowser(0, 0, true, true)
+    focusBrowser(nil)
+    --[[local browser = createBrowser(0, 0, true, true)
     browser:focus()
-    destroyElement(browser)
+    destroyElement(browser)]]
 end
-
---
-addCommandHandler("browser", function(_, x, y)
-    if not eBrowser then
-        eBrowser = new(CBrowser, tonumber(x), tonumber(y))
-    else
-        delete(eBrowser)
-        eBrowser = new(CBrowser, tonumber(x), tonumber(y))
-    end
-end)

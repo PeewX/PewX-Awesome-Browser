@@ -1,5 +1,5 @@
 <meta>
-    <info name="PewX Awesome Browser" author="PewX" />
+    <info name="PewX Awesome Browser" author="PewX" version = "0.5"/>
     <oop>true</oop>
 
     <!--Shared-->
@@ -20,8 +20,6 @@
         <script src = "client/classes/dxGUI/CDX__Manager.lua" type = "client" cache = "false" />
         <script src = "client/classes/dxGUI/CDXEdit.lua" type = "client" cache = "false" />
 
-
-
     <!--Files-->
         <file src = "res/config/browserDefinitions.xml" />
         <file src = "res/img/back.png" />
@@ -33,4 +31,5 @@
         <file src = "res/img/close.png" />
         <file src = "res/img/maximize.png" />
         <file src = "res/img/minimize.png" />
+        <file src = "res/img/menu.png" />
 </meta>

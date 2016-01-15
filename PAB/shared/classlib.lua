@@ -115,7 +115,7 @@ end
 
 function delete(self, ...)
     if self.destructor then --if rawget(self, "destructor") then
-    self:destructor(...)
+        self:destructor(...)
     end
 
     -- Prevent the destructor to be called twice
