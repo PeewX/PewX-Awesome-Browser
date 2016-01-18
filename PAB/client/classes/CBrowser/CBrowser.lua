@@ -297,7 +297,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
     if isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40, self.browserStartY, 40, self.menuIconSizeY) then
         self.colors.browserWindow.close = self.colors.browserWindow.close_hover
         self.colors.browserWindow.closeBackground = self.colors.browserWindow.closeBackground_hover
-        return
+        --do not to return, because this lets the maximize icon be active when hovering from there to the close icon
     else
         self.colors.browserWindow.close = self.colors.browserWindow.close_nonHover
         self.colors.browserWindow.closeBackground = self.colors.browserWindow.closeBackground_nonHover
@@ -388,7 +388,7 @@ function CBrowser:onClientKey(sButton, bState)
     if bState and sButton == "enter" then
         if self.urlBar.clicked then
             local navigateTo = self.urlBar:getText()
-			if not navigateTo:find("http://") or not navigateTo:find("https://") then
+			if not( navigateTo:find("http") or navigateTo:find("https") ) then
 				navigateTo = "http://"..navigateTo
 			end
             self:loadURL(navigateTo)
