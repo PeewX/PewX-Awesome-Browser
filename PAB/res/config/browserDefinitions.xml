@@ -19,8 +19,11 @@
             <browser_nonActive>175,175,175</browser_nonActive>
 
             <lines>80,80,80</lines>
-            <edit_URL>190,190,190</edit_URL>
             <navigationBar>210,210,210</navigationBar>
+
+            <URLedit>255,255,255</URLedit>
+            <URLedit_error>255,0,0,150</URLedit_error>
+            <URLedit_default>255,255,255</URLedit_default>
 
             <closeBackground>0,0,0,0</closeBackground>
             <closeBackground_hover>200,0,0</closeBackground_hover>

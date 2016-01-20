@@ -19,6 +19,7 @@ function CDXEdit:constructor(sTitle, nDiffX, nDiffY, nWidth, nHeight, bNumeric, 
     self.numeric = bNumeric
     self.masked = bMasked
     self.alpha = 255
+    self.color = tocolor()
 
     local pX, pY = self.parent:getPosition()
     self.x = pX + self.diffX

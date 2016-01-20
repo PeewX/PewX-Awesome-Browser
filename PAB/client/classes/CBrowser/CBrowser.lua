@@ -161,10 +161,16 @@ function CBrowser:onClick(sButton, sState)
             return
         end
 
+        --Maximize button
         if sButton == "left" and isHover(self.browserStartX + self.browserSizeX - self.defaultMenuOffset - 40*2, self.browserStartY, 40, self.menuIconSizeY) then
-            self.bypassClicks = true
             self:toggleBrowserSize()
-            --self.bypassClicks = false
+            return
+        end
+
+        --Menu button
+        if sButton == "left" and isHover(self.browserStartX + self.menuOffset, self.browserStartY, self.menuIconSizeX, self.menuIconSizeY) then
+            self:toggleDevelopmentMode()
+            self.mouseClickActive = false
             return
         end
 
@@ -191,7 +197,7 @@ function CBrowser:onClick(sButton, sState)
 
         --Navigation button: SpeedDial/start
         if isHover(self.browserStartX + self.menuOffset + 5 + 36*3, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
-            --self:pageReload()
+            self:loadURL("http://pewx.de/res/pab/index.htm")
             self.mouseClickActive = false
             return
         end
@@ -326,7 +332,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
     ---Navigation button: back
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*0, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonBackHovered = true
-        return
+        --return
     else
         self.navigationButtonBackHovered = false
     end
@@ -334,7 +340,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
     ---Navigation button: forward
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*1, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonForwardHovered = true
-        return
+        --return
     else
         self.navigationButtonForwardHovered = false
     end
@@ -342,7 +348,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
     ---Navigation button: reloads
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*2, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonReloadHovered = true
-        return
+        --return
     else
         self.navigationButtonReloadHovered = false
     end
@@ -350,7 +356,7 @@ function CBrowser:onCursorMove(_, _, nCursorPosX, nCursorPosY)
     ---Navigation button: SpeedDial/start
     if isHover(self.browserStartX + self.menuOffset + 5 + 36*3, self.browserStartY + self.browserTabHeight + 5, 24, 24) then
         self.navigationButtonHomeHovered = true
-        return
+        --return
     else
         self.navigationButtonHomeHovered = false
     end
@@ -411,7 +417,8 @@ end
 ---
 function CBrowser:onBrowserNavigate(sURL, bBlocked)
     if bBlocked then
-        --Todo: Color the URL bar red for some seconds
+        self.colors.browserWindow.URLedit = self.colors.browserWindow.URLedit_error
+        self.resetURLcolor = getTickCount()
         Browser.requestDomains({sURL}, true)
         return
     end
@@ -461,6 +468,8 @@ end
 function CBrowser:navigateTo(_, sNavigateTo)
     if not self.isActive then return end
     if Browser.isDomainBlocked(sNavigateTo, true) then
+        self.colors.browserWindow.URLedit = self.colors.browserWindow.URLedit_error
+        self.resetURLcolor = getTickCount()
 		Browser.requestDomains({sNavigateTo}, true)
         outputChatBox("Returned: Domain is blocked!")
 		self.tabs[self.currentTab].previousBlockedURL = sNavigateTo
@@ -549,6 +558,7 @@ function CBrowser:toggleBrowserSize()
         self.isMaximized = false
         self.menuOffset = self.defaultMenuOffset
 
+        self.moving = true
         self.urlBar:setProperty("w", - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2)
 		self:calculateTabSize()
         return
@@ -563,10 +573,21 @@ function CBrowser:toggleBrowserSize()
         self.isMaximized = true
         self.menuOffset = 0
 
+
+        self.moving = true
         self.urlBar:setProperty("w", - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2)
 		self:calculateTabSize()
         return
     end
+end
+
+---
+-- Method: toggleDevelopmentMode | toggles the development mode of the client
+---
+function CBrowser:toggleDevelopmentMode()
+    local devState = getDevelopmentMode()
+    setDevelopmentMode(not devState, not devState)
+    outputChatBox(("Development mode %s"):format(not devState and "enabled (use /debugscript)" or "disabled"))
 end
 
 ---
@@ -586,8 +607,10 @@ end
 -- LoadURL
 ---
 function CBrowser:loadURL(sURL)
-    --self.tabs[self.currentTab].URL = sURL
     if Browser.isDomainBlocked(sURL, true) then
+        self.colors.browserWindow.URLedit = self.colors.browserWindow.URLedit_error
+        self.resetURLcolor = getTickCount()
+
         outputChatBox(sURL.." is blocked")
 		Browser.requestDomains({sURL}, true)
 		self.tabs[self.currentTab].previousBlockedURL = sURL
@@ -706,11 +729,16 @@ end
 function CBrowser:renderBrowser()
     local bx, by = self.browserStartX, self.browserStartY   --Shortcut for browser start position
 
+    if self.resetURLcolor and getTickCount() > self.resetURLcolor + 5000 then
+        self.colors.browserWindow.URLedit = self.colors.browserWindow.URLedit_default
+        self.resetURLcolor = nil
+    end
+
     --Main Window
     dxDrawRectangle(bx, by, self.browserSizeX, self.browserSizeY, self.colors.browserWindow.browser)
 
     --Navigation bar bar for navigation elements
-    dxDrawRectangle(bx + self.menuOffset, by + self.browserTabHeight, self.browserSizeX  - self.menuOffset*2, self.browserMenuHeight, self.colors.browserWindow.navigationBar)
+    dxDrawRectangle(bx + self.menuOffset, by + self.browserTabHeight, self.browserSizeX - self.menuOffset*2, self.browserMenuHeight, self.colors.browserWindow.navigationBar)
 
     --Menu Button
     dxDrawImage(bx + self.menuOffset, by, self.menuIconSizeX, self.menuIconSizeY, "res/img/menu.png")
@@ -744,7 +772,7 @@ function CBrowser:renderBrowser()
     end
 
     --URL edir bar
-    dxDrawRectangle(mbx + 36*4, mby + 5,  - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2, 24, self.urlColor)
+    dxDrawRectangle(mbx + 36*4, mby + 5,  - 36*4 + self.browserSizeX - self.menuOffset*2 - 5*2, 24, self.colors.browserWindow.URLedit)
     self.urlBar:render()
 
     --Favo image
